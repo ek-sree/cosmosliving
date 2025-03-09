@@ -1,75 +1,79 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, SafeAreaView } from 'react-native';
 import React, { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons, FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import { useSingleProperty } from '@/src/features/useSingleProperty';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { FontAwesome, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import WebView from 'react-native-webview';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import CheckoutPage from '../(modal)/CheckoutPage';
+import { useUserDetails } from '@/src/features/useUserDetails';
 
 const SingleProperty = () => {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  // Move hooks to the top, before any returns
   const { data, isLoading, error } = useSingleProperty(typeof id === 'string' ? id : '');
+  const { data: userData, isLoading: isUserLoading, error: isUserError } = useUserDetails();
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+
 
   // Validate id
   const isValidId = id && typeof id === 'string';
 
-  // Handle invalid ID, loading, and error states without early returns affecting hooks
   const property = isValidId && data?.data
     ? {
-        title: data.data.title || "",
-        location: data.data.address?.address || "",
-        rating: data.data.rating || '', 
+        title: data.data.title || '',
+        location: data.data.address?.address || '',
+        rating: data.data.rating || '',
         reviews: data.data.reviews || '',
         price: data.data.price || '',
-        description: data.data.description || "",
-        guests: data.data.guest_no || "",
-        bathrooms: data.data.bathrooms || "",
-        roomType: data.data.roomType || "",
-        superhost: data.data.superhost || '', 
+        description: data.data.description || '',
+        guests: data.data.guest_no || '',
+        bathrooms: data.data.bathrooms || '',
+        roomType: data.data.roomType || '',
+        superhost: data.data.superhost || '',
         amenities: data.data.amenities || [],
         totalAmenities: data.data.amenities?.length || '',
-        checkIn: data.data.Check_in_time || "",
-        checkOut: data.data.Check_out_time || "",
-        cancellationPolicy: data.data.cancellationPolicy || "",
+        checkIn: data.data.Check_in_time || '',
+        checkOut: data.data.Check_out_time || '',
+        cancellationPolicy: data.data.cancellationPolicy || '',
         houseRules: data.data.term
           ? [
-              data.data.term.pets ? "Pets allowed" : "No pets allowed",
-              data.data.term.smoking ? "Smoking allowed" : "No smoking",
-              data.data.term.party ? "Parties allowed" : "No parties",
-              data.data.term.children ? "Children allowed" : "No children",
-              data.data.term.drinking ? "Drinking allowed" : "No drinking",
+              data.data.term.pets ? 'Pets allowed' : 'No pets allowed',
+              data.data.term.smoking ? 'Smoking allowed' : 'No smoking',
+              data.data.term.party ? 'Parties allowed' : 'No parties',
+              data.data.term.children ? 'Children allowed' : 'No children',
+              data.data.term.drinking ? 'Drinking allowed' : 'No drinking',
               `Maximum ${data.data.guest_no} guests`,
             ]
-          : ["No pets allowed", "Maximum 2 guests", "No unregistered guests"],
+          : ['No pets allowed', 'Maximum 2 guests', 'No unregistered guests'],
         photos: data.data.photos || [{ url: 'https://placehold.co/600x400/png' }],
+        dailyPrices: data.data.dailyPrices || [],
+        guest_no: data.data.guest_no || '3',
+        cleaningFee: data.data.cleaningFee || 0,
       }
     : null;
 
-  // Debug navigation stack
   const handleBackPress = () => {
-    console.log("Attempting to go back...");
+    console.log('Attempting to go back...');
     if (router.canGoBack()) {
-      console.log("Can go back, navigating...");
+      console.log('Can go back, navigating...');
       router.back();
     } else {
-      console.log("Cannot go back, redirecting to /property");
+      console.log('Cannot go back, redirecting to /property');
       router.replace('/property');
     }
   };
 
-  // Description handling
   const truncateDescription = (text, maxLength = 300) => {
     if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + "...";
+    return text.substring(0, maxLength) + '...';
   };
 
-  const initialDescription = property ? truncateDescription(property.description) : "";
-  const fullDescription = property ? property.description : "";
+  const initialDescription = property ? truncateDescription(property.description) : '';
+  const fullDescription = property ? property.description : '';
 
   const toggleDescription = () => {
     setIsDescriptionExpanded(!isDescriptionExpanded);
@@ -84,7 +88,7 @@ const SingleProperty = () => {
     </html>
   `;
 
-  // Render logic
+  // Early returns for invalid ID, loading, and error states
   if (!isValidId) {
     return (
       <View className="flex-1 bg-black justify-center items-center">
@@ -93,12 +97,16 @@ const SingleProperty = () => {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || isUserLoading) {
     return <Text className="text-white text-center mt-10">Loading...</Text>;
   }
 
   if (error) {
     return <Text className="text-red-500 text-center mt-10">Error: {error.message}</Text>;
+  }
+
+  if (isUserError) {
+    return <Text className="text-red-500 text-center mt-10">Error: Failed to load user data - {isUserError.message}</Text>;
   }
 
   if (!property) {
@@ -109,9 +117,16 @@ const SingleProperty = () => {
     );
   }
 
+  if (!userData?.data?.user) {
+    return (
+      <View className="flex-1 bg-black justify-center items-center">
+        <Text className="text-red-500">Error: User data not available</Text>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-black">
-      {/* Header */}
       <View
         className="flex-row justify-between items-center px-4 py-3 bg-black"
         style={{ paddingTop: insets.top }}
@@ -121,9 +136,7 @@ const SingleProperty = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Scrollable Content */}
       <ScrollView className="flex-1">
-        {/* Property Image */}
         <View className="relative ml-2">
           <WebView
             source={{ html: htmlContent }}
@@ -134,7 +147,7 @@ const SingleProperty = () => {
           <View className="absolute top-4 left-4 bg-teal-500 px-3 py-1 rounded-md">
             <Text className="text-white font-medium">Premium Plus</Text>
           </View>
-          <View className="absolute bottom-52 right-4 flex-row">
+          <View className="absolute bottom-40 right-4 flex-row">
             <TouchableOpacity className="bg-white p-2 rounded-full mr-2">
               <Ionicons name="share-outline" size={22} color="black" />
             </TouchableOpacity>
@@ -150,7 +163,6 @@ const SingleProperty = () => {
           </View>
         </View>
 
-        {/* Property Title and Location */}
         <View className="p-4">
           <Text className="text-2xl text-white font-bold mb-2">{property.title}</Text>
           <View className="flex-row items-center mb-2">
@@ -165,10 +177,8 @@ const SingleProperty = () => {
           </View>
           <Text className="text-slate-200 mb-4">{property.location}</Text>
 
-          {/* Divider */}
           <View className="border-t border-gray-200 my-3" />
 
-          {/* Property Features */}
           <View className="flex-row justify-between mb-4">
             <View className="flex-1">
               <Text className="font-medium text-white">{property.guests} Guests</Text>
@@ -181,36 +191,33 @@ const SingleProperty = () => {
             </View>
           </View>
 
-          {/* Description */}
           <Text className="text-white mb-2">{isDescriptionExpanded ? fullDescription : initialDescription}</Text>
           <TouchableOpacity onPress={toggleDescription}>
             <Text className="text-blue-500 font-medium">
-              {isDescriptionExpanded ? "Show less" : "Show more"}
+              {isDescriptionExpanded ? 'Show less' : 'Show more'}
             </Text>
           </TouchableOpacity>
 
-          {/* Divider */}
           <View className="border-t border-gray-200 my-6" />
 
-          {/* Amenities (Limit to 6) */}
           <Text className="text-xl font-bold mb-4 text-white">What this place offers</Text>
           {(property.amenities || []).slice(0, 6).map((amenity, index) => (
             <View key={index} className="flex-row items-center mb-4">
               <MaterialIcons
                 name={
-                  amenity.toLowerCase() === "wifi"
-                    ? "wifi"
-                    : amenity.toLowerCase() === "air_conditioning"
-                    ? "ac-unit"
-                    : amenity.toLowerCase() === "parking"
-                    ? "local-parking"
-                    : amenity.toLowerCase() === "swimming_pool"
-                    ? "pool"
-                    : amenity.toLowerCase() === "hairdryer" || amenity.toLowerCase() === "hair dryer"
-                    ? "dry"
-                    : amenity.toLowerCase() === "shampoo"
-                    ? "shampoo"
-                    : "check-circle"
+                  amenity.toLowerCase() === 'wifi'
+                    ? 'wifi'
+                    : amenity.toLowerCase() === 'air_conditioning'
+                    ? 'ac-unit'
+                    : amenity.toLowerCase() === 'parking'
+                    ? 'local-parking'
+                    : amenity.toLowerCase() === 'swimming_pool'
+                    ? 'pool'
+                    : amenity.toLowerCase() === 'hairdryer' || amenity.toLowerCase() === 'hair dryer'
+                    ? 'dry'
+                    : amenity.toLowerCase() === 'shampoo'
+                    ? 'shampoo'
+                    : 'check-circle'
                 }
                 size={22}
                 color="white"
@@ -224,10 +231,8 @@ const SingleProperty = () => {
             </Text>
           </TouchableOpacity>
 
-          {/* Divider */}
           <View className="border-t border-gray-200 my-3" />
 
-          {/* Policies */}
           <Text className="text-xl font-bold mb-4 text-white">Property Policies</Text>
           <View className="bg-neutral-800 rounded-lg p-4 mb-4">
             <View className="flex-row items-center mb-2">
@@ -269,12 +274,10 @@ const SingleProperty = () => {
             ))}
           </View>
 
-          {/* Add extra space at bottom */}
           <View className="h-24" />
         </View>
       </ScrollView>
 
-      {/* Fixed Price Bar */}
       <View
         className="absolute bottom-0 left-0 right-0 bg-black border-t border-gray-200 px-4 py-3 flex-row justify-between items-center"
         style={{ paddingBottom: insets.bottom }}
@@ -282,16 +285,29 @@ const SingleProperty = () => {
         <View>
           <Text className="text-lg font-bold text-white">
             {property.price}{' '}
-            <Text className="font-normal text-gray-400">AED / night</Text>
+            <Text className="font-normal text-gray-400">/ night</Text>
           </Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowCheckoutModal(true)}>
             <Text className="text-gray-400 underline">Add dates for total</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity className="bg-teal-500 px-6 py-3 rounded-lg">
+        <TouchableOpacity
+          className="bg-teal-500 px-6 py-3 rounded-lg"
+          onPress={() => setShowCheckoutModal(true)}
+        >
           <Text className="text-white font-medium">Check availability</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Checkout Modal */}
+      <CheckoutPage
+        visible={showCheckoutModal}
+        onClose={() => setShowCheckoutModal(false)}
+        propertyData={property}
+        id={id}
+        userId={userData.data.user._id}
+        userName={userData.data.user.fullName || 'Guest'}
+      />
     </SafeAreaView>
   );
 };

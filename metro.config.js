@@ -3,19 +3,16 @@ const { withNativeWind } = require('nativewind/metro');
 const path = require('path');
 
 const config = getDefaultConfig(__dirname, {
-  // Enable custom resolver options if needed
+  // Enable custom resolver options
 });
 
-// Add alias for '@' to point to the root directory
 config.resolver = {
   ...config.resolver,
-  // Use extraNodeModules for aliasing in Metro
   extraNodeModules: {
     '@': path.resolve(__dirname, './'),
   },
-  // Ensure .js and other extensions are resolved
   sourceExts: [...config.resolver.sourceExts, 'js', 'cjs', 'ts', 'tsx'],
+  assetExts: [...config.resolver.assetExts, 'webp', 'png', 'jpg', 'jpeg'], // Explicitly include webp
 };
 
-// Export the config with NativeWind applied
 module.exports = withNativeWind(config, { input: './global.css' });

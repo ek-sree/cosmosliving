@@ -3,6 +3,7 @@
     "name": "cosmosliving",
     "slug": "cosmosliving",
     "version": "1.0.0",
+    "assetBundlePatterns": "['assets/images/*']",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",

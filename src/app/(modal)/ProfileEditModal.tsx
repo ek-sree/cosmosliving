@@ -40,7 +40,6 @@ const ProfileEditModal = ({ visible, onClose, userData, onSave }) => {
       setLoading(true);
       try {
         const file = result.assets[0];
-        console.log('Selected file:', file); 
         const cloudinaryUrl = await uploadImageToCloudinary(file);
         setProfileImage(cloudinaryUrl);
       } catch (error) {
